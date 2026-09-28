@@ -15,7 +15,7 @@ def test_home():
 
 def test_register_user():
     response = client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "testadmin@gmail.com",
             "password": "testadmin123",
@@ -28,7 +28,7 @@ def test_register_user():
 
 def test_invalid_login():
     response = client.post(
-        "/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "wrong@gmail.com",
             "password": "wrongpassword"
@@ -39,6 +39,6 @@ def test_invalid_login():
 
 
 def test_protected_doctors_without_token():
-    response = client.get("/doctors")
+    response = client.get("/api/v1/doctors")
 
     assert response.status_code == 401

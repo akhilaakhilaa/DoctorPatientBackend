@@ -1,6 +1,6 @@
 # Doctor Patient Management API
 
-This project is a backend application developed using FastAPI for managing Doctors and Patients. It includes authentication, authorization, database operations, doctor-patient assignment, validation, pagination and testing.
+This project is a backend application developed using FastAPI for managing Doctors and Patients. It includes authentication, authorization, database operations, doctor-patient assignment, validation, filtering, pagination, CRUD operations, soft delete and testing.
 
 ## Technologies Used
 
@@ -15,6 +15,7 @@ This project is a backend application developed using FastAPI for managing Docto
 - Bcrypt
 - Pytest
 - Swagger / OpenAPI
+- Docker
 
 ## Features
 
@@ -25,38 +26,54 @@ This project is a backend application developed using FastAPI for managing Docto
 - Doctor management
 - Patient management
 - Doctor-patient assignment
+- Doctor-patient relationship
+- Complete CRUD operations
+- PUT and PATCH operations
+- Soft delete
 - Input validation
-- Soft delete for doctors
-- Pagination
+- Doctor email uniqueness validation
+- Patient phone number validation
 - Doctor filtering by specialization
+- Doctor filtering by active status
+- Patient filtering by age
+- Pagination for doctors and patients
+- SQLite database
+- SQLAlchemy ORM
 - Automated API testing
 - Swagger API documentation
+- Docker support
 
 ## Project Structure
 
 ```text
 DoctorPatientBackend/
+
 │
 ├── app/
 │   ├── auth/
+│   │   ├── __init__.py
 │   │   └── jwt.py
 │   │
 │   ├── models/
+│   │   ├── __init__.py
 │   │   ├── user.py
 │   │   ├── doctor.py
 │   │   └── patient.py
 │   │
 │   ├── routers/
+│   │   ├── __init__.py
 │   │   ├── auth.py
 │   │   ├── doctor.py
 │   │   └── patient.py
 │   │
 │   ├── schemas/
+│   │   ├── __init__.py
 │   │   ├── auth.py
 │   │   ├── doctor.py
 │   │   └── patient.py
 │   │
 │   ├── services/
+│   │   ├── __init__.py
 │   │   └── auth_service.py
 │   │
 │   ├── config.py
@@ -64,6 +81,7 @@ DoctorPatientBackend/
 │   └── main.py
 │
 ├── tests/
+│   ├── __init__.py
 │   └── test_api.py
 │
 ├── screenshots/
@@ -75,7 +93,10 @@ DoctorPatientBackend/
 │   ├── 06_doctor_assigned_patients.png
 │   └── 07_forbidden_access.png
 │
+├── .dockerignore
+├── .env
 ├── .gitignore
+├── Dockerfile
 ├── README.md
 └── requirements.txt
 ```
@@ -120,11 +141,15 @@ uvicorn app.main:app --port 8002
 
 The application will run at:
 
+```text
 http://127.0.0.1:8002
+```
 
 Swagger documentation:
 
+```text
 http://127.0.0.1:8002/docs
+```
 
 ## Environment Configuration
 
@@ -196,10 +221,15 @@ Admin can:
 - Create doctors
 - View doctors
 - Update doctors
+- Patch doctors
 - Soft delete doctors
 - Create patients
 - View patients
+- Update patients
+- Patch patients
+- Delete patients
 - Assign patients to doctors
+- View assigned patients
 
 ### Doctor
 
@@ -230,18 +260,12 @@ GET /doctors
 
 Authenticated users can access this API.
 
-Pagination and specialization filtering are supported.
+Pagination and filtering are supported.
 
 Example:
 
 ```text
 GET /doctors?page=1&limit=10
-```
-
-Filtering example:
-
-```text
-GET /doctors?specialization=Cardiology
 ```
 
 ### Get Doctor by ID
@@ -258,6 +282,14 @@ PUT /doctors/{doctor_id}
 
 Admin only.
 
+### Patch Doctor
+
+```text
+PATCH /doctors/{doctor_id}
+```
+
+Admin only.
+
 ### Delete Doctor
 
 ```text
@@ -267,6 +299,32 @@ DELETE /doctors/{doctor_id}
 Admin only.
 
 The doctor is soft deleted by setting `is_active` to false.
+
+## Doctor Filtering
+
+Doctors can be filtered by specialization.
+
+Example:
+
+```text
+GET /doctors?specialization=Cardiology
+```
+
+Doctors can also be filtered by active status.
+
+Example:
+
+```text
+GET /doctors?is_active=true
+```
+
+Pagination can also be used with filtering.
+
+Example:
+
+```text
+GET /doctors?specialization=Cardiology&page=1&limit=10
+```
 
 ## Patient APIs
 
@@ -284,9 +342,9 @@ Authenticated users can access this API.
 GET /patients
 ```
 
-Admin can view all patients.
+Admin can view all active patients.
 
-Doctors can view only their assigned patients.
+Doctors can view only their assigned active patients.
 
 Pagination is supported.
 
@@ -306,6 +364,36 @@ Admin can view any patient.
 
 Doctors can view only their assigned patients.
 
+### Update Patient
+
+```text
+PUT /patients/{patient_id}
+```
+
+### Patch Patient
+
+```text
+PATCH /patients/{patient_id}
+```
+
+### Delete Patient
+
+```text
+DELETE /patients/{patient_id}
+```
+
+The patient is soft deleted using the active status.
+
+## Doctor-Patient Relationship
+
+A patient contains a `doctor_id` field.
+
+This creates a relationship between doctors and patients.
+
+One doctor can have multiple patients.
+
+A patient can be assigned to one doctor at a time.
+
 ## Doctor-Patient Assignment
 
 ### Assign Patient to Doctor
@@ -315,6 +403,14 @@ POST /doctors/{doctor_id}/patients/{patient_id}
 ```
 
 Admin only.
+
+The API checks:
+
+- Doctor exists
+- Doctor is active
+- Patient exists
+
+A patient cannot be assigned to a non-existing doctor or inactive doctor.
 
 ### Get Doctor's Patients
 
@@ -340,8 +436,66 @@ Validation includes:
 
 - Doctor email must be valid.
 - Doctor email must be unique.
+- Duplicate doctor email returns 400 Bad Request.
 - Patient age must be greater than 0.
-- Patient phone number must contain 10 to 15 digits.
+- Patient phone number must contain exactly 10 digits.
+- Patient phone number must contain numbers only.
+
+Example valid phone number:
+
+```text
+9876543210
+```
+
+## Filtering
+
+Doctor filtering:
+
+```text
+GET /doctors?specialization=cardiology
+```
+
+```text
+GET /doctors?is_active=true
+```
+
+Patient filtering:
+
+```text
+GET /patients?age_gt=30
+```
+
+## Pagination
+
+Doctor and Patient APIs support pagination.
+
+Example:
+
+```text
+GET /doctors?page=1&limit=10
+```
+
+```text
+GET /patients?page=1&limit=10
+```
+
+The response contains:
+
+- total
+- current_page
+- limit
+- data
+
+Example response:
+
+```json
+{
+    "total": 10,
+    "current_page": 1,
+    "limit": 10,
+    "data": []
+}
+```
 
 ## Error Handling
 
@@ -372,29 +526,61 @@ The database tables are automatically created when the application starts.
 
 The local database file is not uploaded to GitHub.
 
+## Docker
+
+A Dockerfile is included in the project for running the application using Docker.
+
+The `.dockerignore` file is used to exclude unnecessary files such as:
+
+- virtual environment
+- cache files
+- `.env`
+- local database
+- Git files
+
 ## API Flow
 
 ```text
 User Registration
+
        ↓
+
 User Login
+
        ↓
+
 JWT Token
+
        ↓
+
 Swagger Authorization
+
        ↓
+
 Role Verification
+
        ↓
+
 Admin Creates Doctor
+
        ↓
+
 Admin Creates Patient
+
        ↓
+
 Admin Assigns Patient
+
        ↓
+
 Doctor Login
+
        ↓
+
 Doctor Views Assigned Patients
+
        ↓
+
 Unauthorized Access Returns 403
 ```
 
@@ -449,8 +635,11 @@ The following additional features were implemented:
 
 - Pagination for doctors and patients
 - Doctor filtering by specialization
+- Doctor filtering by active status
+- Patient filtering by age
 - Pytest automated testing
 - Swagger API documentation
+- Docker support
 
 ## Assumptions
 
@@ -459,6 +648,7 @@ The following additional features were implemented:
 - Doctor user email is matched with the doctor profile email.
 - Doctors can only view their assigned patients.
 - Doctors are soft deleted instead of permanently deleted.
+- Patients are handled using active status for deletion.
 - Passwords are stored in hashed form.
 - `.env` is not committed to GitHub.
 - The local SQLite database is not committed to GitHub.
@@ -469,10 +659,20 @@ FastAPI provides Swagger UI for testing and documentation.
 
 Swagger URL:
 
+```text
 http://127.0.0.1:8002/docs
+```
 
 Swagger can be used to test all available APIs including authentication, doctors, patients and doctor-patient assignments.
 
 ## GitHub Repository
 
 https://github.com/akhilaakhilaa/DoctorPatientBackend
+
+
+
+
+
+
+
+

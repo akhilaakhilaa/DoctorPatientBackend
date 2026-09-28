@@ -2,11 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.auth.jwt import get_current_user
+from app.auth.jwt import get_current_user, require_admin
 from app.models.patient import Patient
 from app.models.doctor import Doctor
 from app.models.user import User
-from app.schemas.patient import PatientCreate, PatientResponse
+from app.schemas.patient import (
+    PatientCreate,
+    PatientUpdate,
+    PatientResponse,
+    PatientPaginationResponse
+)
 
 
 router = APIRouter(
@@ -39,52 +44,15 @@ def create_patient(
     return patient
 
 
-# Get Patients
-# Admin can see all patients.
-# Doctor can see only their assigned patients.
+# Get Patients with Filtering and Pagination
 @router.get(
     "",
-    response_model=list[PatientResponse]
-)
-def get_patients(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if current_user.role == "admin":
-        return db.query(Patient).all()
-
-    if current_user.role == "doctor":
-        doctor = db.query(Doctor).filter(
-            Doctor.email == current_user.email,
-            Doctor.is_active == True
-        ).first()
-
-        if not doctor:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Doctor profile not found"
-            )
-
-        return db.query(Patient).filter(
-            Patient.doctor_id == doctor.id
-        ).all()
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Access denied"
-    )
-
-
-# Get Patient by ID
-# Admin can see any patient.
-# Doctor can see only their assigned patients.
-@router.get(
-    "",
-    response_model=list[PatientResponse]
+    response_model=PatientPaginationResponse
 )
 def get_patients(
     page: int = 1,
     limit: int = 10,
+    age_gt: int = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -101,7 +69,9 @@ def get_patients(
         )
 
     if current_user.role == "admin":
-        query = db.query(Patient)
+        query = db.query(Patient).filter(
+            Patient.is_active == True
+        )
 
     elif current_user.role == "doctor":
         doctor = db.query(Doctor).filter(
@@ -116,7 +86,8 @@ def get_patients(
             )
 
         query = db.query(Patient).filter(
-            Patient.doctor_id == doctor.id
+            Patient.doctor_id == doctor.id,
+            Patient.is_active == True
         )
 
     else:
@@ -125,6 +96,182 @@ def get_patients(
             detail="Access denied"
         )
 
-    return query.offset(
+    # Filter by age
+    if age_gt is not None:
+        query = query.filter(
+            Patient.age > age_gt
+        )
+
+    total = query.count()
+
+    patients = query.offset(
         (page - 1) * limit
     ).limit(limit).all()
+
+    return {
+        "total": total,
+        "current_page": page,
+        "limit": limit,
+        "data": patients
+    }
+
+# Get Patient by ID
+@router.get(
+    "/{patient_id}",
+    response_model=PatientResponse
+)
+def get_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.is_active == True
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+
+    if current_user.role == "admin":
+        return patient
+
+    if current_user.role == "doctor":
+        doctor = db.query(Doctor).filter(
+            Doctor.email == current_user.email,
+            Doctor.is_active == True
+        ).first()
+
+        if not doctor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor profile not found"
+            )
+
+        if patient.doctor_id != doctor.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your assigned patients"
+            )
+
+        return patient
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Access denied"
+    )
+
+
+# Update Patient - Admin only
+@router.put(
+    "/{patient_id}",
+    response_model=PatientResponse
+)
+def update_patient(
+    patient_id: int,
+    patient_data: PatientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.is_active == True
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+
+    patient.name = patient_data.name
+    patient.age = patient_data.age
+    patient.phone = patient_data.phone
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
+
+
+# Partially Update Patient - Admin only
+@router.patch(
+    "/{patient_id}",
+    response_model=PatientResponse
+)
+def patch_patient(
+    patient_id: int,
+    patient_data: PatientUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.is_active == True
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+
+    if patient_data.name is not None:
+        patient.name = patient_data.name
+
+    if patient_data.age is not None:
+        patient.age = patient_data.age
+
+    if patient_data.phone is not None:
+        patient.phone = patient_data.phone
+
+    if patient_data.doctor_id is not None:
+        doctor = db.query(Doctor).filter(
+            Doctor.id == patient_data.doctor_id,
+            Doctor.is_active == True
+        ).first()
+
+        if not doctor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor not found or inactive"
+            )
+
+        patient.doctor_id = patient_data.doctor_id
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
+
+
+# Soft Delete Patient - Admin only
+@router.delete(
+    "/{patient_id}",
+    response_model=PatientResponse
+)
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.is_active == True
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+
+    patient.is_active = False
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
