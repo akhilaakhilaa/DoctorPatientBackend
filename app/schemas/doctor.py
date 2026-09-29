@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr
@@ -23,6 +24,10 @@ class DoctorResponse(BaseModel):
     specialization: str
     email: EmailStr
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     class Config:
         from_attributes = True

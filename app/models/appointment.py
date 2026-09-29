@@ -1,26 +1,48 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
+from sqlalchemy import (
+    Column,
+    Integer,
+    DateTime,
+    String,
+    ForeignKey,
+    Index
+)
 
 from app.database import Base
 
 
-class Patient(Base):
-    __tablename__ = "patients"
+class Appointment(Base):
+    __tablename__ = "appointments"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    age = Column(Integer, nullable=False)
-    phone = Column(String, nullable=False, index=True)
 
     doctor_id = Column(
         Integer,
         ForeignKey("doctors.id"),
-        nullable=True,
+        nullable=False,
         index=True
     )
 
-    is_active = Column(Boolean, default=True, index=True)
+    patient_id = Column(
+        Integer,
+        ForeignKey("patients.id"),
+        nullable=False,
+        index=True
+    )
+
+    appointment_date = Column(
+        DateTime,
+        nullable=False,
+        index=True
+    )
+
+    status = Column(
+        String,
+        nullable=False,
+        default="scheduled",
+        index=True
+    )
 
     created_at = Column(
         DateTime,
@@ -43,4 +65,12 @@ class Patient(Base):
         Integer,
         ForeignKey("users.id"),
         nullable=True
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_appointments_doctor_date",
+            "doctor_id",
+            "appointment_date"
+        ),
     )

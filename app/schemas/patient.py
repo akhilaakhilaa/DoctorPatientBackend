@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -32,6 +33,10 @@ class PatientResponse(BaseModel):
     phone: str
     doctor_id: Optional[int] = None
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     class Config:
         from_attributes = True

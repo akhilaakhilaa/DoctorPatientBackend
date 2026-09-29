@@ -34,7 +34,9 @@ def create_patient(
     patient = Patient(
         name=patient_data.name,
         age=patient_data.age,
-        phone=patient_data.phone
+        phone=patient_data.phone,
+        created_by=current_user.id,
+        updated_by=current_user.id
     )
 
     db.add(patient)
@@ -96,7 +98,6 @@ def get_patients(
             detail="Access denied"
         )
 
-    # Filter by age
     if age_gt is not None:
         query = query.filter(
             Patient.age > age_gt
@@ -114,6 +115,7 @@ def get_patients(
         "limit": limit,
         "data": patients
     }
+
 
 # Get Patient by ID
 @router.get(
@@ -190,6 +192,7 @@ def update_patient(
     patient.name = patient_data.name
     patient.age = patient_data.age
     patient.phone = patient_data.phone
+    patient.updated_by = current_user.id
 
     db.commit()
     db.refresh(patient)
@@ -242,6 +245,8 @@ def patch_patient(
 
         patient.doctor_id = patient_data.doctor_id
 
+    patient.updated_by = current_user.id
+
     db.commit()
     db.refresh(patient)
 
@@ -270,6 +275,7 @@ def delete_patient(
         )
 
     patient.is_active = False
+    patient.updated_by = current_user.id
 
     db.commit()
     db.refresh(patient)

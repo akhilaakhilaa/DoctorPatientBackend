@@ -46,7 +46,9 @@ def create_doctor(
         name=doctor_data.name,
         specialization=doctor_data.specialization,
         email=doctor_data.email,
-        is_active=True
+        is_active=True,
+        created_by=current_user.id,
+        updated_by=current_user.id
     )
 
     db.add(doctor)
@@ -83,7 +85,6 @@ def get_doctors(
 
     query = db.query(Doctor)
 
-    # By default, show only active doctors
     if is_active is None:
         query = query.filter(
             Doctor.is_active == True
@@ -93,7 +94,6 @@ def get_doctors(
             Doctor.is_active == is_active
         )
 
-    # Filter by specialization
     if specialization:
         query = query.filter(
             Doctor.specialization.ilike(
@@ -176,6 +176,8 @@ def update_doctor(
     doctor.specialization = doctor_data.specialization
     doctor.email = doctor_data.email
 
+    doctor.updated_by = current_user.id
+
     db.commit()
     db.refresh(doctor)
 
@@ -227,6 +229,8 @@ def patch_doctor(
     if doctor_data.is_active is not None:
         doctor.is_active = doctor_data.is_active
 
+    doctor.updated_by = current_user.id
+
     db.commit()
     db.refresh(doctor)
 
@@ -255,6 +259,7 @@ def delete_doctor(
         )
 
     doctor.is_active = False
+    doctor.updated_by = current_user.id
 
     db.commit()
     db.refresh(doctor)
@@ -295,6 +300,7 @@ def assign_patient_to_doctor(
         )
 
     patient.doctor_id = doctor_id
+    patient.updated_by = current_user.id
 
     db.commit()
     db.refresh(patient)
@@ -323,14 +329,12 @@ def get_doctor_patients(
             detail="Doctor not found"
         )
 
-    # Admin can view any doctor's patients
     if current_user.role == "admin":
         return db.query(Patient).filter(
             Patient.doctor_id == doctor_id,
             Patient.is_active == True
         ).all()
 
-    # Doctor can view only their own assigned patients
     if current_user.role == "doctor":
         if doctor.email != current_user.email:
             raise HTTPException(
