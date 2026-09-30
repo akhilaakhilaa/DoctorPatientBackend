@@ -8,15 +8,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.database import Base, engine
+
 from app.models.user import User
 from app.models.doctor import Doctor
 from app.models.patient import Patient
 from app.models.appointment import Appointment
+from app.models.billing import Billing
 
 from app.routers.auth import router as auth_router
 from app.routers.doctor import router as doctor_router
 from app.routers.patient import router as patient_router
 from app.routers.appointment import router as appointment_router
+from app.routers.billing import router as billing_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -46,6 +49,10 @@ tags_metadata = [
     {
         "name": "Appointments",
         "description": "Create, view, update and manage doctor appointments."
+    },
+    {
+        "name": "Billings",
+        "description": "Manage billing and payment records."
     }
 ]
 
@@ -53,10 +60,10 @@ tags_metadata = [
 app = FastAPI(
     title="Doctor Patient Management API",
     description=(
-        "A REST API for managing doctors, patients and appointments. "
-        "The API provides JWT authentication, role-based authorization, "
-        "data validation, appointment management, audit tracking, "
-        "error handling and basic rate limiting."
+        "A REST API for managing doctors, patients, appointments "
+        "and billing. The API provides JWT authentication, "
+        "role-based authorization, validation, audit tracking, "
+        "error handling and billing management."
     ),
     version="1.0.0",
     openapi_tags=tags_metadata,
@@ -190,11 +197,16 @@ app.include_router(
     prefix=API_PREFIX
 )
 
+app.include_router(
+    billing_router,
+    prefix=API_PREFIX
+)
+
 
 @app.get(
     "/",
     summary="API Health Check",
-    description="Checks whether the Doctor Patient Management API is running."
+    description="Checks whether the API is running."
 )
 def home():
 

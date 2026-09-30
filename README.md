@@ -52,6 +52,16 @@ Doctor and patient appointment listing
 
 Appointment conflict prevention
 
+Billing and payment management
+
+Billing CRUD operations
+
+Billing filtering and pagination
+
+Revenue reporting
+
+Billing transaction handling
+
 Complete CRUD operations
 
 PUT and PATCH operations
@@ -819,6 +829,12 @@ Doctor Views Assigned Patients
        ↓
 
 Unauthorized Access Returns 403
+↓
+Billing Creation
+↓
+Payment
+↓
+Revenue Reporting
 
 ```
 
@@ -857,12 +873,19 @@ cancelled
 Appointment APIs
 
 POST /api/v1/appointments
+
 GET /api/v1/appointments
+
 GET /api/v1/appointments/{appointment_id}
+
 PUT /api/v1/appointments/{appointment_id}
+
 PATCH /api/v1/appointments/{appointment_id}
+
 DELETE /api/v1/appointments/{appointment_id}
+
 GET /api/v1/appointments/doctors/{doctor_id}/appointments
+
 GET /api/v1/appointments/patients/{patient_id}/appointments
 
 The API validates that:
@@ -944,11 +967,17 @@ Logging for unexpected application errors.
 Example validation error:
 
 {
-    "success": false,
-    "error": {
-        "code": 422,
-        "message": "Request validation failed"
-    }
+
+    "success": false,
+
+    "error": {
+
+        "code": 422,
+
+        "message": "Request validation failed"
+
+    }
+
 }
 
 The basic rate limiter returns HTTP 429 when the configured request limit is exceeded.
@@ -991,7 +1020,7 @@ FastAPI Swagger/OpenAPI documentation has been enhanced with:
 
 API title and description.
 
-API tags for Authentication, Doctors, Patients and Appointments.
+API tags for Authentication, Doctors, Patients, Appointments and Billings.
 
 Endpoint summaries.
 
@@ -1101,6 +1130,66 @@ Request examples.
 
 Response examples.
 
+Levels 27-29 Completed
+
+Level 27 - Billing Module
+
+Billing model with patient, doctor and appointment references.
+
+Consultation fee and additional charges.
+
+Automatic total amount calculation.
+
+Payment status and payment mode.
+
+Billing CRUD APIs.
+
+Patient and doctor billing listings.
+
+Billing authorization.
+
+Duplicate appointment billing prevention.
+
+Cancelled appointment validation.
+
+Soft delete.
+
+Level 28 - Billing Reports and Filtering
+
+Payment status filtering.
+
+Doctor filtering.
+
+Patient filtering.
+
+Date-range filtering.
+
+Pagination for billing list APIs.
+
+Total revenue reporting.
+
+Daily revenue reporting.
+
+Doctor-specific revenue reporting.
+
+Level 29 - Transactions and Consistency
+
+Database transaction for billing creation.
+
+Appointment status update in the same transaction.
+
+Transaction rollback on database failure.
+
+Database-level billing validation constraints.
+
+Foreign key constraints.
+
+Non-negative amount constraints.
+
+Payment status constraints.
+
+Payment mode constraints.
+
 Screenshots
 
 Screenshots of API testing are available in the screenshots folder.
@@ -1144,6 +1233,22 @@ Important screenshots from Levels 11-18 include:
 24_pytest_coverage_70
 
 25_swagger_documentation
+
+26_create_billing
+27_get_billing
+28_get_billings
+29_patient_billings
+30_doctor_billings
+31_update_billing
+32_patch_billing
+33_delete_billing
+34_deleted_billing_check
+35_billing_filters
+36_revenue_report
+37_total_revenue_report
+38_create_transaction_appointment
+39_create_billing_transaction
+40_appointment_completed_after_billing
 
 Bonus Features
 
@@ -1207,15 +1312,8 @@ Swagger URL:
 
 http://127.0.0.1:8002/docs
 
-Swagger can be used to test authentication, doctors, patients and appointment APIs.
+Swagger can be used to test authentication, doctors, patients, appointments, billing and revenue APIs.
 
 GitHub Repository**
 
 https://github.com/akhilaakhilaa/DoctorPatientBackend
-
-
-
-
-
-
-
